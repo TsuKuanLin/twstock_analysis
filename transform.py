@@ -18,7 +18,7 @@ def transform_csv_data(csv_file):
             i = 0
             for line in lines:
                 i += 1
-                if i == 4: # 4th row in csv, find name for each column 
+                if i == 4: # 4th row in csv, find name for each column, 當XQ output header有改變要改這行
                     try:
                         compCategory = line.index('\"產業\"')
                     except:
@@ -45,23 +45,21 @@ def write_output_file(stock_data, endOfLine):
             str_ = ' '.join(lines)+endOfLine
             f.write(str_)
 
-def get_stock_list_from_watchlist(url): #爬蟲
+def get_stock_list_from_watchlist(url): #爬蟲, get stock info from tradingview.com
 
     response = requests.get(url)
-
     soup = BeautifulSoup(response.content, 'html.parser')
-
     comp_list = soup.find(attrs={'name':"description"})['content']
 
     return comp_list.split(', ')
     
-def find_numTWstock_by_same_date(Mark_path):
+def find_numTWstock_by_same_date(Mark_path): # find "All_date.csv" by "Mark_date.csv"
 
     date, base_dir = os.path.basename(Mark_path)[-12:-4], os.path.dirname(Mark_path)
-    all_stock_csv_path = os.path.join(base_dir,f'All_{date}.csv')
+    all_stock_csv_path = os.path.join(base_dir,f'All {date}.csv') # my file is "All_date.csv", Jerry's file is "All date.csv"
 
     with open(all_stock_csv_path) as f:
-        numTWstock = sum(1 for row in csv.reader(f,quotechar=',')) - 4
+        numTWstock = sum(1 for row in csv.reader(f,quotechar=',')) - 4 # total row minus header, if XQ header has change, then revise this
 
     return numTWstock, date
 
@@ -110,7 +108,7 @@ def extract_csv_data(csv_file, stock_list):
         data.append(line[1:])            
     return data, not_find
 
-def make_category_hashmap(stock_data):
+def make_category_hashmap(stock_data): #count 共同細項
     map = {}
     times_list = []
     for data in stock_data:
@@ -146,7 +144,7 @@ def get_nth_largest_csv(folder_path, prefix, day=1):
     else:
         return "資料夾中沒有符合條件的檔案"
     
-def extract_RS_ranking_from_csv(csv_file, stock_list):
+def extract_RS_ranking_from_csv(csv_file, stock_list): # only extract comp Name, RS ranking from All_date.csv
     
     numTWstock, date = find_numTWstock_by_same_date(csv_file)
 
@@ -160,7 +158,7 @@ def extract_RS_ranking_from_csv(csv_file, stock_list):
                 try:
                     RSRank = line.index('\"排行名次\"')
                     compSymbol_index = line.index('\"代碼\"')
-                    compName_index = line.index('\"商品\"')
+                    compName_index = line.index('\"商品\"') 
                 except:
                     return ['ERROR:CSV input format wrong!!!']
             if i > 4:
@@ -182,8 +180,8 @@ def draw_historical_RS_ranking_plot(start, end, stock_list):
     import matplotlib
     import matplotlib.pyplot as plt
 
-    matplotlib.rc('font', family='MingLiU')
-    plt.figure(figsize=(8,6))
+    matplotlib.rc('font', family='MingLiU') # 新細明體，微軟正黑體有超大行距
+    plt.figure(figsize=(8,6)) # 800x600 dpi
 
     dates, RS_ranking_data, legend =  [], [], []
     for nth in range(end, start-1, -1):
@@ -207,17 +205,20 @@ def draw_historical_RS_ranking_plot(start, end, stock_list):
     plt.title(time_str)
     plt.xlabel('日期')
     plt.ylabel('RS ranking')
-    plt.legend(legend, loc='center left', bbox_to_anchor=(1.04, 0.5))#, borderaxespad=0.)
+    plt.legend(legend, loc='center left', bbox_to_anchor=(1.04, 0.5))
     plt.savefig(time_str+".png")
 
 if __name__ == "__main__":
     
-    print('usage:\t輸入enter:\t自動將最新的csv轉成股票代碼')
-    print('\t只輸入csv檔:\t將此csv轉成股票代碼')
-    print('\t輸入csv檔;股票清單網址: 將股票清單中的股票資訊從csv檔中萃取出來')
-    print('\t輸入csv檔;股票清單網址;日期: 萃取當日資料後，依照股票清單的股票擷取輸入日期的RS ranking資料並畫圖')
-    print('\t日期格式:\t只輸入單一數字(N):擷取第一天(當天)到第N天前的資訊')
-    print('\t\t\t輸入A-B(B>A):擷取第A天前到第B天前的資訊')
+    def usage():
+        print('usage:\t輸入enter:\t自動將最新的csv轉成股票代碼')
+        print('\t只輸入csv檔:\t將此csv轉成股票代碼')
+        print('\t輸入csv檔;股票清單網址: 將股票清單中的股票資訊從csv檔中萃取出來')
+        print('\t輸入csv檔;股票清單網址;日期: 萃取當日資料後，依照股票清單的股票擷取輸入日期的RS ranking資料並畫圖')
+        print('\t日期格式:\t只輸入單一數字(N):擷取第一天(當天)到第N天前的資訊')
+        print('\t\t\t輸入A-B(B>A):擷取第A天前到第B天前的資訊')
+
+    usage()
     user_input = input('請按enter或輸入股票清單:\n')
     user_input = user_input.split(';')
     
@@ -256,9 +257,8 @@ if __name__ == "__main__":
                     start, end = int(dates[0]), int(dates[1]) 
                 draw_historical_RS_ranking_plot(start, end, stock_list)
         except Exception as e:
-            print(e)
+            print('ERROR!\n',e)
             pass
-
 
         times_list = make_category_hashmap(stock_data)
         if not times_list:
@@ -268,5 +268,3 @@ if __name__ == "__main__":
         for stock in not_find:
             stock_data.append([stock,"not find in csv"]) 
         write_output_file(stock_data+times_list,'\n')
-
-        
