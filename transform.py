@@ -33,13 +33,18 @@ def transform_csv_data(csv_file):
 
     return ','.join(stock_list)
 
-def write_output_file(stock_data, endOfLine):
+def write_output_file(stock_data, endOfLine, filename):
 
     now = time.localtime()
-    time_str = ''.join((str(now.tm_mon).zfill(2), str(now.tm_mday).zfill(2),"選股池XQ"))
+    if filename == "XQ":
+        time_str = ''.join((str(now.tm_mon).zfill(2), str(now.tm_mday).zfill(2),filename)) 
+    else:
+        time_str = ''.join((str(now.tm_mon).zfill(2), str(now.tm_mday).zfill(2),filename)) + "_1"
     
-    if f'{time_str}.txt' in os.listdir('.'):
-        time_str = time_str+'_'+str(now.tm_hour)+"_"+str(now.tm_min)
+    if glob.glob(os.path.join(f'{time_str[:-2]}*.txt')):
+        time_str = os.path.basename(glob.glob(os.path.join(f'{time_str[:-2]}*.txt'))[-1])
+        time_str = '_'.join([*time_str.split('_')[:-1],str(int(time_str.split('_')[-1].split('.')[0])+1)])
+
     with open(f'./{time_str}.txt', 'w', encoding="utf-8") as f:
         for lines in stock_data:
             str_ = ' '.join(lines)+endOfLine
@@ -56,7 +61,7 @@ def get_stock_list_from_watchlist(url): #爬蟲, get stock info from tradingview
 def find_numTWstock_by_same_date(Mark_path): # find "All_date.csv" by "Mark_date.csv"
 
     date, base_dir = os.path.basename(Mark_path)[-12:-4], os.path.dirname(Mark_path)
-    all_stock_csv_path = os.path.join(base_dir,f'All {date}.csv') # my file is "All_date.csv", Jerry's file is "All date.csv"
+    all_stock_csv_path = glob.glob(os.path.join(base_dir,f'All*{date}.csv'))[0]
 
     with open(all_stock_csv_path) as f:
         numTWstock = sum(1 for row in csv.reader(f,quotechar=',')) - 4 # total row minus header, if XQ header has change, then revise this
@@ -138,6 +143,7 @@ def get_nth_largest_csv(folder_path, prefix, day=1):
         # 如果至少有指定的多個檔案，取得第nth大的檔案
         if len(sorted_files) >= day:
             nth_largest_file = sorted_files[-day]
+            print(nth_largest_file)
             return nth_largest_file
         else:
             return f"檔案數量不足{day}個"
@@ -179,9 +185,17 @@ def draw_historical_RS_ranking_plot(start, end, stock_list):
 
     import matplotlib
     import matplotlib.pyplot as plt
+    from matplotlib.pyplot import MultipleLocator
 
     matplotlib.rc('font', family='MingLiU') # 新細明體，微軟正黑體有超大行距
-    plt.figure(figsize=(8,6)) # 800x600 dpi
+
+    figSize = len(stock_list)
+    if figSize <= 10:
+        ratio = 1
+    else:
+        ratio = 1+(figSize-10)/10*2
+
+    plt.figure(figsize=(8*ratio, 6*ratio)) # 800x600 dpi
 
     dates, RS_ranking_data, legend =  [], [], []
     for nth in range(end, start-1, -1):
@@ -191,17 +205,20 @@ def draw_historical_RS_ranking_plot(start, end, stock_list):
     
     for idx in range(len(stock_list)): 
         if idx < 20:
-            plt.plot(dates, [RS_ranking_data[i][idx] for i in range(end-start+1)],'-o', color=colors[idx])
+            plt.plot(dates, [RS_ranking_data[i][idx] for i in range(end-start+1)], '-o', color=colors[idx], zorder=len(stock_list)-idx)
         else:
-            plt.plot(dates, [RS_ranking_data[i][idx] for i in range(end-start+1)],'-o')
-
+            plt.plot(dates, [RS_ranking_data[i][idx] for i in range(end-start+1)], '-o', zorder=len(stock_list)-idx)
         legend.append(stock_list[idx]+compName_dict[stock_list[idx]])
-    now = time.localtime()
-    time_str = ''.join((str(now.tm_mon).zfill(2), str(now.tm_mday).zfill(2),"選股池XQ"))
-    if f'{time_str}.png' in os.listdir('.'):
-        time_str = time_str+'_'+str(now.tm_hour)+"_"+str(now.tm_min)
 
+    now = time.localtime()
+    time_str = ''.join((str(now.tm_mon).zfill(2), str(now.tm_mday).zfill(2)+"_RS_1"))
+
+    if glob.glob(os.path.join(f'{time_str[:-2]}*.png')):
+        time_str = os.path.basename(glob.glob(os.path.join(f'{time_str[:-2]}*.png'))[-1])
+        time_str = '_'.join([*time_str.split('_')[:-1],str(int(time_str.split('_')[-1].split('.')[0])+1)])
+    # ax = plt.gca()
     plt.subplots_adjust(right=0.7)
+    # ax.yaxis.set_major_locator(MultipleLocator(1))
     plt.title(time_str)
     plt.xlabel('日期')
     plt.ylabel('RS ranking')
@@ -212,9 +229,8 @@ if __name__ == "__main__":
     
     def usage():
         print('usage:\t輸入enter:\t自動將最新的csv轉成股票代碼')
-        print('\t只輸入csv檔:\t將此csv轉成股票代碼')
-        print('\t輸入csv檔;股票清單網址: 將股票清單中的股票資訊從csv檔中萃取出來')
-        print('\t輸入csv檔;股票清單網址;日期: 萃取當日資料後，依照股票清單的股票擷取輸入日期的RS ranking資料並畫圖')
+        print('\t股票清單網址: 將股票清單中的股票資訊從最新的csv檔中萃取出來')
+        print('\t股票清單網址;日期: 萃取當日資料後，依照股票清單的股票擷取輸入日期的RS ranking資料並畫圖')
         print('\t日期格式:\t只輸入單一數字(N):擷取第一天(當天)到第N天前的資訊')
         print('\t\t\t輸入A-B(B>A):擷取第A天前到第B天前的資訊')
 
@@ -222,44 +238,25 @@ if __name__ == "__main__":
     user_input = input('請按enter或輸入股票清單:\n')
     user_input = user_input.split(';')
     
-    if len(user_input) == 1:
-
-        if not user_input[0]: # directly enter "enter"
-            dir = os.path.abspath(get_nth_largest_csv("選股池清單","Mark"))
-        else:
-            dir = os.path.abspath(user_input[0].replace("\"",""))
-        stock_list = transform_csv_data(dir)
-        write_output_file(stock_list,'')
-
-    else:
-        if "http" in user_input[1]:
-            stock_list = get_stock_list_from_watchlist(user_input[1])
-        else:
-            stock_list = []
-            stock_str = user_input[1].split(',')
-            for stock in stock_str:
-                if ":" in stock:
-                    stock_list.append(stock.split(':')[1])
-                else:
-                    stock_list.append(stock)
-
+    if ".csv" in user_input[0]:
         dir = os.path.abspath(user_input[0].replace("\"",""))
-        stock_data, not_find = extract_csv_data(dir, stock_list)
-        
-        # find history RS ranking
-        try:  
-            if user_input[2]:
-                #deal with input, defaulth start=1
-                dates = user_input[2].split('-')
-                if len(dates) == 1:
-                    start, end = 1, int(dates[0])
-                else:
-                    start, end = int(dates[0]), int(dates[1]) 
-                draw_historical_RS_ranking_plot(start, end, stock_list)
-        except Exception as e:
-            print('ERROR!\n',e)
-            pass
 
+        if len(user_input) == 1:
+            stock_list = transform_csv_data(dir)
+            write_output_file(stock_list,'',"XQ")
+
+        else:
+            if "http" in user_input[1]:
+                stock_list = get_stock_list_from_watchlist(user_input[1])
+            else:
+                stock_list = []
+                stock_str = user_input[1].split(',')
+                for stock in stock_str:
+                    if ":" in stock:
+                        stock_list.append(stock.split(':')[1])
+                    else:
+                        stock_list.append(stock)
+        stock_data, not_find = extract_csv_data(dir, stock_list)
         times_list = make_category_hashmap(stock_data)
         if not times_list:
             times_list = [['無共同細產業']]
@@ -267,4 +264,46 @@ if __name__ == "__main__":
             times_list.sort(key=lambda x: int(x[0].split('次')[0]), reverse=True)
         for stock in not_find:
             stock_data.append([stock,"not find in csv"]) 
-        write_output_file(stock_data+times_list,'\n')
+        write_output_file(stock_data+times_list,'\n', "sector")
+
+    else:
+        dir = os.path.abspath(get_nth_largest_csv("選股池清單","Mark"))
+
+        if not user_input[0]:    
+            stock_list = transform_csv_data(dir)
+            write_output_file(stock_list,'',"XQ")
+
+        else:
+            if "http" in user_input[0]:
+                stock_list = get_stock_list_from_watchlist(user_input[0])
+            else:
+                stock_list = []
+                stock_str = user_input[0].split(',')
+                for stock in stock_str:
+                    if ":" in stock:
+                        stock_list.append(stock.split(':')[1])
+                    else:
+                        stock_list.append(stock)
+
+            stock_data, not_find = extract_csv_data(dir, stock_list)
+            
+            # find history RS ranking
+            
+            if len(user_input) == 2:
+                #deal with input, defaulth start=1
+                dates = user_input[1].split('-')
+                if len(dates) == 1:
+                    start, end = 1, int(dates[0])
+                else:
+                    start, end = int(dates[0]), int(dates[1]) 
+                draw_historical_RS_ranking_plot(start, end, stock_list)
+
+            times_list = make_category_hashmap(stock_data)
+            if not times_list:
+                times_list = [['無共同細產業']]
+            else:
+                times_list.sort(key=lambda x: int(x[0].split('次')[0]), reverse=True)
+            for stock in not_find:
+                stock_data.append([stock,"not find in csv"]) 
+            write_output_file(stock_data+times_list,'\n',"sector")
+    input("程式跑完了...")
