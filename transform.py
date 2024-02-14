@@ -196,6 +196,8 @@ def draw_historical_RS_ranking_plot(start, end, stock_list):
         ratio = 1+(figSize-10)/10*2
 
     plt.figure(figsize=(8*ratio, 6*ratio)) # 800x600 dpi
+    ax = plt.axes()
+    ax.yaxis.set_major_locator(MultipleLocator(1))
 
     dates, RS_ranking_data, legend =  [], [], []
     for nth in range(end, start-1, -1):
@@ -216,9 +218,8 @@ def draw_historical_RS_ranking_plot(start, end, stock_list):
     if glob.glob(os.path.join(f'{time_str[:-2]}*.png')):
         time_str = os.path.basename(glob.glob(os.path.join(f'{time_str[:-2]}*.png'))[-1])
         time_str = '_'.join([*time_str.split('_')[:-1],str(int(time_str.split('_')[-1].split('.')[0])+1)])
-    # ax = plt.gca()
+    
     plt.subplots_adjust(right=0.7)
-    # ax.yaxis.set_major_locator(MultipleLocator(1))
     plt.title(time_str)
     plt.xlabel('日期')
     plt.ylabel('RS ranking')
@@ -229,7 +230,7 @@ if __name__ == "__main__":
     
     def usage():
         print('usage:\t輸入enter:\t自動將最新的csv轉成股票代碼')
-        print('\t股票清單網址: 將股票清單中的股票資訊從最新的csv檔中萃取出來')
+        print('\t股票清單網址: 將股票清單中的股票資訊從最新的csv檔中萃取出來，依照股票清單的股票擷取20天的RS ranking資料並畫圖')
         print('\t股票清單網址;日期: 萃取當日資料後，依照股票清單的股票擷取輸入日期的RS ranking資料並畫圖')
         print('\t日期格式:\t只輸入單一數字(N):擷取第一天(當天)到第N天前的資訊')
         print('\t\t\t輸入A-B(B>A):擷取第A天前到第B天前的資訊')
@@ -286,7 +287,18 @@ if __name__ == "__main__":
                         stock_list.append(stock)
 
             stock_data, not_find = extract_csv_data(dir, stock_list)
+
+            # 將原本的 RS 後面連接 Fundamental RS
+            dir_fund = os.path.abspath(get_nth_largest_csv("選股池清單","Fund"))
+            stock_data_fund, not_find_fund = extract_csv_data(dir_fund, stock_list)
+            stock_data_fund_dict = dict()
+
+            for stock_fund in stock_data_fund:
+                stock_data_fund_dict[stock_fund[1]] = stock_fund[0]
             
+            for stock in stock_data:
+                stock[0] = ','.join([stock[0],stock_data_fund_dict[stock[1]]])  
+
             # find history RS ranking
             
             if len(user_input) == 2:
@@ -296,7 +308,10 @@ if __name__ == "__main__":
                     start, end = 1, int(dates[0])
                 else:
                     start, end = int(dates[0]), int(dates[1]) 
-                draw_historical_RS_ranking_plot(start, end, stock_list)
+            else:
+                #default start=1
+                start, end = 1, 20
+            draw_historical_RS_ranking_plot(start, end, stock_list)
 
             times_list = make_category_hashmap(stock_data)
             if not times_list:
@@ -306,4 +321,5 @@ if __name__ == "__main__":
             for stock in not_find:
                 stock_data.append([stock,"not find in csv"]) 
             write_output_file(stock_data+times_list,'\n',"sector")
-    input("程式跑完了...")
+    print("程式跑完了...")
+    time.sleep(1)
