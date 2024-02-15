@@ -36,7 +36,7 @@ def transform_csv_data(csv_file):
 def write_output_file(stock_data, endOfLine, filename):
 
     now = time.localtime()
-    if filename == "XQ":
+    if filename in ["XQ","HTF"]:
         time_str = ''.join((str(now.tm_mon).zfill(2), str(now.tm_mday).zfill(2),filename)) 
     else:
         time_str = ''.join((str(now.tm_mon).zfill(2), str(now.tm_mday).zfill(2),filename)) + "_1"
@@ -273,6 +273,9 @@ if __name__ == "__main__":
         if not user_input[0]:    
             stock_list = transform_csv_data(dir)
             write_output_file(stock_list,'',"XQ")
+            dir_HTF = os.path.abspath(get_nth_largest_csv("選股池清單","HTF"))
+            stock_list = transform_csv_data(dir_HTF)
+            write_output_file(stock_list,'',"HTF")
 
         else:
             if "http" in user_input[0]:
