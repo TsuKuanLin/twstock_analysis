@@ -189,13 +189,7 @@ def draw_historical_RS_ranking_plot(start, end, stock_list):
 
     matplotlib.rc('font', family='MingLiU') # 新細明體，微軟正黑體有超大行距
 
-    figSize = len(stock_list)
-    if figSize <= 10:
-        ratio = 1
-    else:
-        ratio = 1+(figSize-10)/10*2
-
-    plt.figure(figsize=(8*ratio, 6*ratio)) # 800x600 dpi
+    plt.figure(figsize=(16, 12)) # 1600x1200 dpi
     ax = plt.axes()
     ax.yaxis.set_major_locator(MultipleLocator(1))
 
