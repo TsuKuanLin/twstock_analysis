@@ -1,3 +1,9 @@
 選股池清單/*
+build/
+dist/
+
+*.png
+*.txt
+
 test.py
 get_ex-dividend_and_reduction.py

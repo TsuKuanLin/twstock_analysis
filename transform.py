@@ -294,7 +294,7 @@ if __name__ == "__main__":
                 stock_data_fund_dict[stock_fund[1]] = stock_fund[0]
             
             for stock in stock_data:
-                stock[0] = ','.join([stock[0],stock_data_fund_dict[stock[1]]])  
+                stock[0] = ','.join([stock[0],stock_data_fund_dict.get(stock[1], "N.F.")])  
 
             # find history RS ranking
             
